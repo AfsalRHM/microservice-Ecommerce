@@ -7,7 +7,7 @@ const app = express();
 
 dotenv.config();
 app.use(cors());
-app.use(express.json()); 
+app.use(express.json());  
 
 app.use('/user', proxy(`http://order-service:${process.env.ORDER_PORT}`));
 app.use('/auth', proxy(`http://auth-service:${process.env.AUTH_PORT}`));
