@@ -1,0 +1,71 @@
+services:
+
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    ports:
+      - "${MAIN_PORT}:${MAIN_PORT}"
+    environment:
+      - MAIN_PORT=${MAIN_PORT}
+      - ORDER_PORT=${ORDER_PORT}
+      - AUTH_PORT=${AUTH_PORT}
+      - PRODUCT_PORT=${PRODUCT_PORT}
+    depends_on:
+      - rabbitmq
+      - auth-service
+      - order-service
+      - product-service
+    networks:
+      - my_network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - my_network
+
+  auth-service:
+    build: ./auth-service  
+    container_name: auth-service
+    ports:
+      - "${AUTH_PORT}:${AUTH_PORT}"  
+    depends_on:
+      - rabbitmq
+    networks:
+      - my_network
+
+  order-service:
+    build: ./order-service
+    container_name: order-service
+    ports:
+      - "${ORDER_PORT}:${ORDER_PORT}"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - my_network
+    command: ["./wait-for-it.sh", "rabbitmq:5672", "--", "node", "index.js"]
+
+  product-service:
+    build: ./product-service
+    container_name: product-service
+    ports:
+      - "${PRODUCT_PORT}:${PRODUCT_PORT}"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - my_network
+    command: ["./wait-for-it.sh", "rabbitmq:5672", "--", "node", "index.js"]
+
+networks:
+  my_network:
+    driver: bridge
